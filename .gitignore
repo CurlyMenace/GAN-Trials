@@ -1,0 +1,4 @@
+.venv
+.venv/*
+
+img_align_celeba
