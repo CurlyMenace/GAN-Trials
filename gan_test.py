@@ -1,0 +1,145 @@
+import time
+import torch
+from torch import nn
+import torch.optim as optim
+import pandas as pd
+
+class Generator(nn.Module):
+    def __init__(self, output_activation = None):
+        super(Generator, self).__init__()
+        self.linear1 = nn.Linear(48, 480)
+        self.leaky_relu = nn.LeakyReLU()
+        self.linear2 = nn.Linear(480,240)
+        self.linear3 = nn.Linear(240,48)
+        self.output_activation = output_activation
+
+    def forward(self, input_tensor):
+        intermediate = self.linear1(input_tensor)
+        intermediate = self.leaky_relu(intermediate)
+        intermediate = self.linear2(intermediate)
+        intermediate = self.leaky_relu(intermediate)
+        intermediate = self.linear3(intermediate)
+
+        if self.output_activation is not None:
+            intermediate = self.output_activation(intermediate)
+        return intermediate
+
+class Discriminator(nn.Module):
+    def __init__(self, input_dim, layers):
+        super(Discriminator, self).__init__()
+        self.input_dim = input_dim
+        self._init_layers(layers)
+
+    def _init_layers(self, layers):
+        self.module_list = nn.ModuleList()
+        last_layer = self.input_dim
+        for index, width in enumerate(layers):
+            self.module_list.append(nn.Linear(last_layer, width))
+            last_layer = width
+            if index + 1 != len(layers):
+                self.module_list.append(nn.LeakyReLU())
+        else:
+            self.module_list.append(nn.Sigmoid())
+
+    def forward(self, input_tensor):
+        intermediate = input_tensor
+        for layer in self.module_list:
+            intermediate = layer(intermediate)
+        return intermediate
+
+class GAN():
+    def __init__(self, generator, discriminator, noise_fn, data_fn, batch_size=1, lr=0.0002):
+        self.device = torch.device("cuda:0")
+
+        self.generator = generator
+        self.generator = self.generator.to(self.device)
+        self.discriminator = discriminator
+        self.discriminator = self.discriminator.to(self.device)
+        self.noise_fn = noise_fn
+        self.data_fn = data_fn
+        self.batch_size = batch_size
+        self.criterion = nn.BCELoss()
+        self.optim_d = optim.Adam(discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
+        self.optim_g = optim.Adam(generator.parameters(), lr=lr, betas=(0.5, 0.999))
+
+        self.target_ones = torch.ones((batch_size, 48)).to(self.device)
+        self.target_zeros = torch.zeros((batch_size, 48)).to(self.device)
+    
+    def generate_samples(self, latent_vec=None, num=None):
+        num = self.batch_size if num is None else num
+        latent_vec = self.noise_fn(num) if latent_vec is None else latent_vec
+        with torch.no_grad():
+            samples = self.generator(latent_vec)
+        return samples
+
+    def train_step_generator(self):
+        self.generator.zero_grad()
+
+        latent_vec = self.noise_fn(self.batch_size)
+        generated = self.generator(latent_vec)
+        classifications = self.discriminator(generated)
+        loss = self.criterion(classifications, self.target_ones)
+        loss.backward()
+
+        self.optim_g.step()
+        return loss.item()
+
+    def train_step_discriminator(self, index):
+        self.discriminator.zero_grad()
+        batch_x = self.batch_size * index
+        batch_y = (self.batch_size * index) + self.batch_size
+        real_samples = self.data_fn(batch_x, batch_y)
+        pred_real = self.discriminator(real_samples)
+        loss_real = self.criterion(pred_real, self.target_ones)
+
+        latent_vec = self.noise_fn(self.batch_size)
+        with torch.no_grad():
+            fake_samples = self.generator(latent_vec)
+        pred_fake = self.discriminator(fake_samples)
+        loss_fake = self.criterion(pred_fake, self.target_zeros)
+
+        loss = (loss_real + loss_fake) / 2
+        loss.backward()
+        self.optim_d.step()
+        return loss_real.item(), loss_fake.item()
+
+    def train_step(self, batch):
+        loss_d = self.train_step_discriminator(batch)
+        loss_g = self.train_step_generator()
+        return loss_g, loss_d
+
+
+def main():
+    from time import time 
+
+    epochs = 600
+    batches = 10
+    generator = Generator()
+    discriminator = Discriminator(48, [480, 240, 48])
+    noise_fn = lambda x: torch.rand((x, 48), device='cuda:0')
+    data = pd.read_csv('normalised_dataset.csv')
+    data_fn = lambda x, y: torch.tensor(data.iloc[x:y].to_numpy(), device='cuda:0').float()
+
+    gan = GAN(generator, discriminator, noise_fn, data_fn)
+    loss_g, loss_d_real, loss_d_fake = [], [], []
+
+    start = time()
+    for epoch in range(epochs):
+        loss_g_running, loss_d_real_running, loss_d_fake_running = 0,0,0
+
+        for batch in range(batches):
+            lg_, (ldr_, ldf_) = gan.train_step(batch)
+            loss_g_running += lg_
+            loss_d_real_running += ldr_
+            loss_d_fake_running += ldf_
+
+    loss_g.append(loss_g_running / batches)
+    loss_d_real.append(loss_d_real_running / batches)
+    loss_d_fake.append(loss_d_fake_running / batches)
+    print(f"Epoch {epoch+1}/{epochs} ({int(time() - start)}s):"
+        f" G={loss_g[-1]:.3f},"
+        f" Dr={loss_d_real[-1]:.3f},"
+        f" Df={loss_d_fake[-1]:.3f}")
+
+if __name__ == "__main__":
+    main()
