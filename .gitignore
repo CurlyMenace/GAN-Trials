@@ -2,3 +2,5 @@
 .venv/*
 
 img_align_celeba
+
+normalised_dataset.csv
