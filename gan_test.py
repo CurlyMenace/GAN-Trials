@@ -7,10 +7,10 @@ import pandas as pd
 class Generator(nn.Module):
     def __init__(self, output_activation = None):
         super(Generator, self).__init__()
-        self.linear1 = nn.Linear(48, 480)
+        self.linear1 = nn.Linear(48, 128)
         self.leaky_relu = nn.LeakyReLU()
-        self.linear2 = nn.Linear(480,240)
-        self.linear3 = nn.Linear(240,48)
+        self.linear2 = nn.Linear(128,512)
+        self.linear3 = nn.Linear(512,48)
         self.output_activation = output_activation
 
     def forward(self, input_tensor):
@@ -48,7 +48,7 @@ class Discriminator(nn.Module):
         return intermediate
 
 class GAN():
-    def __init__(self, generator, discriminator, noise_fn, data_fn, batch_size=1, lr=0.0002):
+    def __init__(self, generator, discriminator, noise_fn, data_fn, batch_size=64, lr=0.0002):
         self.device = torch.device("cuda:0")
 
         self.generator = generator
@@ -86,9 +86,9 @@ class GAN():
 
     def train_step_discriminator(self, index):
         self.discriminator.zero_grad()
-        batch_x = self.batch_size * index
-        batch_y = (self.batch_size * index) + self.batch_size
-        real_samples = self.data_fn(batch_x, batch_y)
+        # batch_x = self.batch_size * index
+        # batch_y = (self.batch_size * index) + self.batch_size
+        real_samples = self.data_fn(self.batch_size)
         pred_real = self.discriminator(real_samples)
         loss_real = self.criterion(pred_real, self.target_ones)
 
@@ -113,12 +113,13 @@ def main():
     from time import time 
 
     epochs = 600
-    batches = 10
+    batches = 25
     generator = Generator()
-    discriminator = Discriminator(48, [480, 240, 48])
+    discriminator = Discriminator(48, [128, 512, 48])
     noise_fn = lambda x: torch.rand((x, 48), device='cuda:0')
     data = pd.read_csv('normalised_dataset.csv')
-    data_fn = lambda x, y: torch.tensor(data.iloc[x:y].to_numpy(), device='cuda:0').float()
+    #data_fn = lambda x, y: torch.tensor(data.iloc[x:y].to_numpy(), device='cuda:0').float()
+    data_fn = lambda x: torch.tensor(data.sample(n=x).to_numpy(), device='cuda:0').float()
 
     gan = GAN(generator, discriminator, noise_fn, data_fn)
     loss_g, loss_d_real, loss_d_fake = [], [], []
@@ -133,13 +134,13 @@ def main():
             loss_d_real_running += ldr_
             loss_d_fake_running += ldf_
 
-    loss_g.append(loss_g_running / batches)
-    loss_d_real.append(loss_d_real_running / batches)
-    loss_d_fake.append(loss_d_fake_running / batches)
-    print(f"Epoch {epoch+1}/{epochs} ({int(time() - start)}s):"
-        f" G={loss_g[-1]:.3f},"
-        f" Dr={loss_d_real[-1]:.3f},"
-        f" Df={loss_d_fake[-1]:.3f}")
+        loss_g.append(loss_g_running / batches)
+        loss_d_real.append(loss_d_real_running / batches)
+        loss_d_fake.append(loss_d_fake_running / batches)
+        print(f"Epoch {epoch+1}/{epochs} ({int(time() - start)}s):"
+            f" G={loss_g[-1]:.3f},"
+            f" Dr={loss_d_real[-1]:.3f},"
+            f" Df={loss_d_fake[-1]:.3f}")
 
 if __name__ == "__main__":
     main()

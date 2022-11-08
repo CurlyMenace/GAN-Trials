@@ -1,9 +1,22 @@
+import os
 import pandas as pd
-data = pd.read_csv("dataset.csv")
+
+
+aggregate_df = pd.DataFrame()
 new_df = pd.DataFrame() 
 
-for column in data:
-    vals = data[column].tolist()
+path = r'./CSVs'
+files = os.listdir(path)
+
+for file in files:
+    if file.endswith('.csv'):
+        data = pd.read_csv("{}/{}".format(path, file))
+        data.pop('Unnamed: 0')
+        
+        aggregate_df = pd.concat([data, aggregate_df], ignore_index=True)
+
+for column in aggregate_df:
+    vals = aggregate_df[column].tolist()
     maxVal = max(vals)
     minVal = min(vals)
 
