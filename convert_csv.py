@@ -7,13 +7,17 @@ new_df = pd.DataFrame()
 
 path = r'./CSVs'
 files = os.listdir(path)
-
+# index for limiting how many values in the sample csv. 
+index = 0
 for file in files:
+    if index == 50:
+        break
     if file.endswith('.csv'):
         data = pd.read_csv("{}/{}".format(path, file))
         data.pop('Unnamed: 0')
         
         aggregate_df = pd.concat([data, aggregate_df], ignore_index=True)
+        index += 1
 
 for column in aggregate_df:
     vals = aggregate_df[column].tolist()

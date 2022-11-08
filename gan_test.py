@@ -7,10 +7,10 @@ import pandas as pd
 class Generator(nn.Module):
     def __init__(self, output_activation = None):
         super(Generator, self).__init__()
-        self.linear1 = nn.Linear(48, 128)
+        self.linear1 = nn.Linear(48, 64)
         self.leaky_relu = nn.LeakyReLU()
-        self.linear2 = nn.Linear(128,512)
-        self.linear3 = nn.Linear(512,48)
+        self.linear2 = nn.Linear(64,128)
+        self.linear3 = nn.Linear(128,48)
         self.output_activation = output_activation
 
     def forward(self, input_tensor):
@@ -113,9 +113,9 @@ def main():
     from time import time 
 
     epochs = 600
-    batches = 25
+    batches = 10
     generator = Generator()
-    discriminator = Discriminator(48, [128, 512, 48])
+    discriminator = Discriminator(48, [64, 128, 48])
     noise_fn = lambda x: torch.rand((x, 48), device='cuda:0')
     data = pd.read_csv('normalised_dataset.csv')
     #data_fn = lambda x, y: torch.tensor(data.iloc[x:y].to_numpy(), device='cuda:0').float()
