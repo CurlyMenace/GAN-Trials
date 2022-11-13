@@ -15,9 +15,17 @@ for file in files:
     if file.endswith('.csv'):
         data = pd.read_csv("{}/{}".format(path, file))
         data.pop('Unnamed: 0')
-        
+        # data.pop('L7_http')
+        # data.pop('L4_tcp')
+        # data.pop('L4_udp')
+        # data.pop('L7_https')
+        # data.pop('port_class_src')
+        # data.pop('port_class_dst')
+        # data.pop('NTP_count')
         aggregate_df = pd.concat([data, aggregate_df], ignore_index=True)
-        index += 1
+        # index += 1
+
+aggregate_df.to_csv("combined_dataset.csv")
 
 for column in aggregate_df:
     vals = aggregate_df[column].tolist()
@@ -33,4 +41,4 @@ for column in aggregate_df:
     new_df[column] = normalised_data
 
 print(new_df)
-new_df.to_csv("normalised_dataset.csv", header=False, index=False)
+new_df.to_csv("normalised_dataset.csv", index=False)

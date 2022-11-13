@@ -25,7 +25,7 @@ random.seed(manualSeed)
 torch.manual_seed(manualSeed)
 
 # Root directory for dataset
-dataroot = "."
+dataroot = "./data"
 
 # Number of workers for dataloader
 workers = 2
@@ -208,7 +208,7 @@ print("Starting Training Loop...")
 for epoch in range(num_epochs):
     for i, data in enumerate(dataloader, 0):
         ############################
-        # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
+        # (1) Update D net]work: maximize log(D(x)) + log(1 - D(G(z)))
         ###########################
         ## Train with all-real batch
         netD.zero_grad()
@@ -216,6 +216,7 @@ for epoch in range(num_epochs):
         real_cpu = data[0].to(device)
         b_size = real_cpu.size(0)
         label = torch.full((b_size,), real_label, dtype=torch.float, device=device)
+        print(label)
         # Forward pass real batch through D
         output = netD(real_cpu).view(-1)
         # Calculate loss on all-real batch

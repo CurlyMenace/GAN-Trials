@@ -51,15 +51,11 @@ class Discriminator(nn.Module):
         self.module_list = nn.ModuleList()
         last_layer = self.input_dim
         for index, width in enumerate(layers):
-            print(index,width)
             self.module_list.append(nn.Linear(last_layer, width))
-            print("In for loop")
             last_layer = width
             if index + 1 != len(layers):
-                print("Appending leakyrelu")
                 self.module_list.append(nn.LeakyReLU())
         else:
-            print("sigmoid")
             self.module_list.append(nn.Sigmoid())
 
     def forward(self, input_tensor):
@@ -101,7 +97,6 @@ class VanillaGAN():
 
         self.target_ones = torch.ones((batch_size, 1)).to(self.device)
         self.target_zeros = torch.zeros((batch_size, 1)).to(self.device)
-        print(self.target_ones)
     def generate_samples(self, latent_vec=None, num=None):
         """Sample from the generator.
         
@@ -138,7 +133,6 @@ class VanillaGAN():
         #real samples
         real_samples = self.data_fn(self.batch_size)
         pred_real = self.discriminator(real_samples)
-        print(pred_real.size(), self.target_ones.size())
         loss_real = self.criterion(pred_real, self.target_ones)
 
         # generated samples
